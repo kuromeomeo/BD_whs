@@ -3,16 +3,16 @@ import { bootstrapApplication } from '@angular/platform-browser';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { provideRouter, withHashLocation, Routes } from '@angular/router';
 import { AppComponent } from './src/app.component';
-import { LoginComponent } from './src/components/login/login.component';
-import { DashboardComponent } from './src/components/dashboard/dashboard.component';
-import { ChemicalListComponent } from './src/components/chemicals/chemical-list.component';
-import { InventoryComponent } from './src/components/inventory/inventory.component';
-import { SettingsComponent } from './src/components/settings/settings.component';
+import { LoginComponent } from './src/features/auth/login.component';
+import { DashboardComponent } from './src/features/dashboard/dashboard.component';
+import { ChemicalListComponent } from './src/features/chemicals/chemical-list.component';
+import { InventoryComponent } from './src/features/inventory/inventory.component';
+import { SettingsComponent } from './src/features/settings/settings.component';
 import { inject } from '@angular/core';
-import { AuthService } from './src/services/auth.service';
-import { GoodsReceiptComponent } from './src/components/goods-receipt/goods-receipt.component';
-import { GoodsIssueComponent } from './src/components/goods-issue/goods-issue.component';
-import { ReportComponent } from './src/components/reports/report.component';
+import { AuthService } from './src/core/services/auth.service';
+import { GoodsReceiptComponent } from './src/features/goods-receipt/goods-receipt.component';
+import { GoodsIssueComponent } from './src/features/goods-issue/goods-issue.component';
+import { ReportComponent } from './src/features/reports/report.component';
 
 const authGuard = () => {
   const auth = inject(AuthService);

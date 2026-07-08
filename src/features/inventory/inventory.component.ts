@@ -1,8 +1,8 @@
 
 import { Component, inject, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DataService, Chemical, GoodsReceipt } from '../../services/data.service';
-import { AuthService } from '../../services/auth.service';
+import { DataService, Chemical, GoodsReceipt } from '../../core/services/data.service';
+import { AuthService } from '../../core/services/auth.service';
 import { FormsModule } from '@angular/forms';
 
 @Component({

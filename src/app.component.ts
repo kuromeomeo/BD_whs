@@ -2,8 +2,8 @@
 import { Component, inject, signal } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router, NavigationEnd } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { AuthService } from './services/auth.service';
-import { DataService } from './services/data.service';
+import { AuthService } from './core/services/auth.service';
+import { DataService } from './core/services/data.service';
 import { filter } from 'rxjs/operators';
 import { FormsModule } from '@angular/forms';
 

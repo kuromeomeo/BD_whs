@@ -1,8 +1,8 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DataService, GoodsIssue, Chemical, WarehouseData, UsageColumnDef } from '../../services/data.service';
-import { AuthService } from '../../services/auth.service';
+import { DataService, GoodsIssue, Chemical, WarehouseData, UsageColumnDef } from '../../core/services/data.service';
+import { AuthService } from '../../core/services/auth.service';
 
 const getLocalToday = () => {
   const d = new Date();

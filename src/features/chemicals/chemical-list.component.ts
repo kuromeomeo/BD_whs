@@ -1,8 +1,8 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DataService, Chemical } from '../../services/data.service';
-import { AuthService } from '../../services/auth.service';
+import { DataService, Chemical } from '../../core/services/data.service';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-chemical-list',

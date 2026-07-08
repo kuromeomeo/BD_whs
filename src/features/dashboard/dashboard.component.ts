@@ -2,7 +2,7 @@
 import { Component, inject, computed, ElementRef, ViewChild, AfterViewInit, effect, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { DataService } from '../../services/data.service';
+import { DataService } from '../../core/services/data.service';
 
 declare var d3: any;
 
