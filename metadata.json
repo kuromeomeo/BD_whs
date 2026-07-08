@@ -1,0 +1,7 @@
+{
+  "name": "App Quản lý kho (Full)",
+  "description": "",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

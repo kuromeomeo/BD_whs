@@ -26,3 +26,5 @@ dist-ssr
 reports
 .env
 database
+.angular/
+.angular
