@@ -1,5 +1,4 @@
 // Code.gs - Google Apps Script Backend cho Ứng dụng Quản lý Kho Hóa Chất
-
 const SHEET_NAME_MAP = {
   "Users": "Nhân Viên",
   "Warehouses": "Danh Sách Kho",
@@ -10,9 +9,10 @@ const SHEET_NAME_MAP = {
   "Chemicals": "Hóa Chất",
   "GoodsReceipts": "Phiếu Nhập",
   "GoodsIssues": "Phiếu Xuất",
-  "Config": "Cấu Hình"
+  "Config": "Cấu Hinh",
+  "Equipments": "Danh Sách Thiết Bị",
+  "EquipmentQCs": "QC Thiết Bị"
 };
-
 const HEADER_MAP = {
   // Common
   "id": "Mã hệ thống",
@@ -62,13 +62,13 @@ const HEADER_MAP = {
   "enableUsageDetails": "Bật bảng chi tiết BN",
   "usageColumns": "Cấu hình cột BN",
   // Usage Details on Issues
-  "usageDetails": "Chi tiết sử dụng (BN)"
+  "usageDetails": "Chi tiết sử dụng (BN)",
+  // Equipment
+  "equipmentId": "Mã Thiết Bị"
 };
-
 function getVietnameseHeader(englishHeader) {
   return HEADER_MAP[englishHeader] || englishHeader;
 }
-
 function getEnglishHeader(vietnameseHeader) {
   for (var key in HEADER_MAP) {
     if (HEADER_MAP[key] === vietnameseHeader) {
@@ -77,7 +77,6 @@ function getEnglishHeader(vietnameseHeader) {
   }
   return vietnameseHeader;
 }
-
 /**
  * Trả về giao diện web HTML (file index.html)
  */
@@ -87,27 +86,51 @@ function doGet(e) {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
-
+const SHEET_HEADERS_MAP = {
+  "Users": ["id", "name", "code", "password", "role", "permissions", "createdDate", "createdBy"],
+  "Warehouses": ["id", "name", "enableUsageDetails", "usageColumns"],
+  "Units": ["id", "name"],
+  "SubUnits": ["id", "name"],
+  "VolumeUnits": ["id", "name"],
+  "Manufacturers": ["id", "name"],
+  "Chemicals": ["id", "warehouseId", "name", "manufacturerId", "unitId", "itemsPerUnit", "subItemName", "volumePerSubItem", "volumeUnit", "openingStock", "currentStock", "requiresLotAndExpiry", "createdDate", "createdBy"],
+  "GoodsReceipts": ["id", "receiptDate", "warehouseId", "chemicalId", "entryType", "qrCode", "lotNumber", "quantity", "expiryDate", "notes", "createdDate", "createdBy", "qcStatus", "qcDate", "qcBy", "lotRejectionReason", "lastModifiedBy", "lastModifiedDate"],
+  "GoodsIssues": ["id", "issueDate", "warehouseId", "equipmentId", "chemicalId", "lotNumber", "quantity", "isSubUnit", "notes", "createdDate", "createdBy", "usageDetails", "lastModifiedBy", "lastModifiedDate"],
+  "Config": ["appName", "warningThresholdDays", "criticalThresholdDays", "qcControlledWarehouseIds"],
+  "Equipments": ["id", "name", "warehouseId"],
+  "EquipmentQCs": ["id", "chemicalId", "lotNumber", "equipmentId", "qcStatus", "qcDate", "qcBy", "notes"]
+};
+function getOrCreateSheet(sheetKey) {
+  var sheetName = SHEET_NAME_MAP[sheetKey] || sheetKey;
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(sheetName);
+  
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+    var enHeaders = SHEET_HEADERS_MAP[sheetKey] || [];
+    var vnHeaders = [];
+    for (var i = 0; i < enHeaders.length; i++) {
+      vnHeaders.push(getVietnameseHeader(enHeaders[i]));
+    }
+    if (vnHeaders.length > 0) {
+      sheet.getRange(1, 1, 1, vnHeaders.length).setValues([vnHeaders]);
+    }
+  }
+  return sheet;
+}
 /**
  * Lấy toàn bộ dữ liệu từ một Sheet cụ thể
  * @param {string} sheetKey - Tên key của Sheet bằng tiếng Anh (VD: Users, Chemicals)
  * @returns {string} - Chuỗi JSON chứa mảng các object
  */
 function loadTable(sheetKey) {
-  var sheetName = SHEET_NAME_MAP[sheetKey] || sheetKey;
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName(sheetName);
-  if (!sheet) return JSON.stringify([]);
-
+  var sheet = getOrCreateSheet(sheetKey);
   var dataRange = sheet.getDataRange();
   var values = dataRange.getValues();
   if (values.length <= 1) return JSON.stringify([]);
-
   var vnHeaders = values[0];
   var result = [];
-
   var numKeys = ['itemsPerUnit', 'volumePerSubItem', 'openingStock', 'currentStock', 'quantity', 'warningThresholdDays', 'criticalThresholdDays', 'lowStockThreshold'];
-
   for (var i = 1; i < values.length; i++) {
     var row = values[i];
     var obj = {};
@@ -137,27 +160,18 @@ function loadTable(sheetKey) {
   
   return JSON.stringify(result);
 }
-
 /**
  * Lưu toàn bộ dữ liệu vào một Sheet (Ghi đè)
  * @param {string} sheetKey - Tên key của Sheet bằng tiếng Anh
  * @param {string} dataString - Chuỗi JSON chứa mảng các object cần lưu
  */
 function saveTable(sheetKey, dataString) {
-  var sheetName = SHEET_NAME_MAP[sheetKey] || sheetKey;
   var data = JSON.parse(dataString);
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName(sheetName);
-  
-  // Nếu sheet chưa tồn tại thì tạo mới
-  if (!sheet) {
-    sheet = ss.insertSheet(sheetName);
-  }
+  var sheet = getOrCreateSheet(sheetKey);
   
   sheet.clear(); // Xóa dữ liệu cũ
   sheet.showColumns(1, sheet.getMaxColumns()); // Bỏ ẩn mọi cột trước khi ghi lại, tránh lỗi mất cột khi đổi vị trí
   if (!data || data.length === 0) return true;
-
   // Gom tất cả key từ MỌI phần tử (không chỉ phần tử đầu tiên)
   var keySet = {};
   for (var k = 0; k < data.length; k++) {
@@ -173,7 +187,6 @@ function saveTable(sheetKey, dataString) {
   }
   
   var rows = [vnHeaders];
-
   for (var i = 0; i < data.length; i++) {
     var row = [];
     for (var j = 0; j < enHeaders.length; j++) {
@@ -187,7 +200,6 @@ function saveTable(sheetKey, dataString) {
     }
     rows.push(row);
   }
-
   // Ghi mảng 2 chiều vào Google Sheet để tối ưu hiệu suất
   sheet.getRange(1, 1, rows.length, vnHeaders.length).setValues(rows);
   
@@ -199,7 +211,6 @@ function saveTable(sheetKey, dataString) {
   
   return true;
 }
-
 /**
  * (Tùy chọn) Hàm lấy toàn bộ bộ nhớ ứng dụng trong 1 lần gọi để load nhanh
  */
@@ -214,10 +225,11 @@ function getInitialAppData() {
     chemicals: JSON.parse(loadTable('Chemicals')),
     goodsReceipts: JSON.parse(loadTable('GoodsReceipts')),
     goodsIssues: JSON.parse(loadTable('GoodsIssues')),
-    config: JSON.parse(loadTable('Config'))
+    config: JSON.parse(loadTable('Config')),
+    equipments: JSON.parse(loadTable('Equipments')),
+    equipmentQCs: JSON.parse(loadTable('EquipmentQCs'))
   };
 }
-
 /**
  * Lưu dữ liệu chi tiết sử dụng (bệnh nhân) vào Sheet riêng theo tên kho.
  * @param {string} warehouseName - Tên kho (sẽ tạo sheet "BN - {warehouseName}")

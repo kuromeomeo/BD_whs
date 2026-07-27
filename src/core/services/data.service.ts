@@ -1,77 +1,12 @@
 import { Injectable, signal, computed } from '@angular/core';
-
-export interface Chemical {
-  id: string;
-  warehouseId: string;
-  name: string;
-  manufacturerId: string;
-  unitId: string; // Đơn vị chính (VD: Hộp, Thùng)
-  itemsPerUnit: number; // Số lượng item con trong 1 đơn vị chính (VD: 10 lọ/hộp)
-  subItemName: string; // Tên item con (VD: Lọ, Pack, Chai)
-  volumePerSubItem: number; // Thể tích của item con (VD: 4)
-  volumeUnit: string; // Đơn vị của thể tích (VD: ml)
-  openingStock: number;
-  createdDate: string;
-  createdBy: string;
-  currentStock: number;
-  lowStockThreshold?: number; // Cảnh báo tồn kho cho từng hóa chất
-  requiresLotAndExpiry?: boolean; // Quản lý Lot và Hạn sử dụng (Hóa chất) hay không (Vật tư)
-}
-
-export interface MasterData {
-  id: string;
-  name: string;
-}
-
-export interface UsageColumnDef {
-  key: string;   // unique key: col_1, col_2...
-  label: string;  // display name: "Mã BN", "Họ Tên"...
-}
-
-export interface WarehouseData extends MasterData {
-  enableUsageDetails?: boolean;     // Bật bảng chi tiết BN khi xuất kho
-  usageColumns?: UsageColumnDef[];  // Danh sách cột tùy chỉnh
-}
-
-export interface GoodsReceipt {
-  id: string;
-  receiptDate: string;
-  warehouseId: string;
-  chemicalId: string;
-  entryType: 'scan' | 'manual';
-  qrCode?: string;
-  lotNumber: string;
-  quantity: number;
-  expiryDate: string;
-  notes?: string;
-  createdDate: string;
-  createdBy: string;
-  // LOT Control (ISO 15189)
-  qcStatus?: 'pending' | 'passed' | 'failed'; // pending: Chờ duyệt, passed: Đạt, failed: Không đạt
-  qcDate?: string;   // Ngày duyệt
-  qcBy?: string;     // Người duyệt
-  lotRejectionReason?: string; // Lý do không đạt (nếu failed)
-  // Audit Trail
-  lastModifiedBy?: string;   // Người sửa lần cuối
-  lastModifiedDate?: string; // Thời gian sửa lần cuối
-}
-
-export interface GoodsIssue {
-  id: string;
-  issueDate: string;
-  warehouseId: string;
-  chemicalId: string;
-  lotNumber: string;
-  quantity: number;
-  isSubUnit: boolean; // True nếu xuất theo đơn vị con (VD: Lọ), False nếu xuất theo đơn vị chính (VD: Hộp)
-  notes?: string;
-  createdDate: string;
-  createdBy: string;
-  usageDetails?: Record<string, string>[]; // Dữ liệu bảng BN (mảng các dòng, mỗi dòng là object key→value)
-  // Audit Trail
-  lastModifiedBy?: string;   // Người sửa lần cuối
-  lastModifiedDate?: string; // Thời gian sửa lần cuối
-}
+import { Chemical } from '../models/chemical.model';
+import { GoodsReceipt } from '../models/goods-receipt.model';
+import { GoodsIssue } from '../models/goods-issue.model';
+import { MasterData } from '../models/master-data.model';
+import { WarehouseData, UsageColumnDef } from '../models/warehouse.model'
+import { IdHelper } from '../helpers/id.helper';
+import { StorageHelper } from '../helpers/storage.helper';
+import { ExcelHelper } from '../helpers/excel.helper';
 
 declare const google: any;
 declare const XLSX: any;
@@ -103,16 +38,6 @@ export class DataService {
   goodsReceipts = signal<GoodsReceipt[]>([]);
   goodsIssues = signal<GoodsIssue[]>([]);
   
-  // ===================== GAS SYNC LOGIC =====================
-  private syncData(sheetName: string, data: any[]) {
-    // Lưu backup vào LocalStorage
-    localStorage.setItem(`chem_${sheetName.toLowerCase()}`, JSON.stringify(data));
-    
-    // Đẩy lên Google Sheets nếu đang chạy trên GAS
-    if (isGasEnvironment) {
-       google.script.run.saveTable(sheetName, JSON.stringify(data));
-    }
-  }
 
   private syncConfig() {
       const configObj = [{
@@ -133,20 +58,6 @@ export class DataService {
     return arr.sort((a, b) => a.name.localeCompare(b.name, 'vi'));
   }
 
-  private generateNextId(prefix: string, list: any[]): string {
-    if (!list || list.length === 0) return `${prefix}01`;
-    let maxNum = 0;
-    for (const item of list) {
-      if (item.id && item.id.startsWith(prefix)) {
-        const numPart = item.id.substring(prefix.length);
-        const parsed = parseInt(numPart, 10);
-        if (!isNaN(parsed) && parsed > maxNum) {
-          maxNum = parsed;
-        }
-      }
-    }
-    return `${prefix}${(maxNum + 1).toString().padStart(2, '0')}`;
-  }
 
   // Khởi tạo toàn bộ dữ liệu từ Sheet (được gọi từ AppComponent)
   initAppData(data: any) {
@@ -217,108 +128,16 @@ export class DataService {
     }
   }
 
-  // Hàm phân tích file Excel mock database ở local
   async loadMockExcel(): Promise<any> {
     try {
-      const response = await fetch('/database/mock_data.xlsx');
-      if (!response.ok) {
-        throw new Error('Không tìm thấy file database/mock_data.xlsx');
-      }
-      const arrayBuffer = await response.arrayBuffer();
-      const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
-      const parsedData: any = {};
-      
-      const sheetNameMap: Record<string, string> = {
-        "Nhân Viên": "users",
-        "Danh Sách Kho": "warehouses",
-        "Đơn Vị Tính": "units",
-        "Đơn Vị Con": "subUnits",
-        "Đơn Vị Thể Tích": "volumeUnits",
-        "Hãng Sản Xuất": "manufacturers",
-        "Hóa Chất": "chemicals",
-        "Phiếu Nhập": "goodsReceipts",
-        "Phiếu Xuất": "goodsIssues",
-        "Cấu Hình": "config"
-      };
+      const workbook = await ExcelHelper.loadWorkbook(
+        '/database/mock_data.xlsx'
+      );
 
-      const headerMap: Record<string, string> = {
-        "Mã hệ thống": "id",
-        "Tên": "name",
-        "Ngày tạo": "createdDate",
-        "Người tạo": "createdBy",
-        "Người sửa": "lastModifiedBy",
-        "Thời gian sửa": "lastModifiedDate",
-        "Ghi chú": "notes",
-        "Mã NV (Đăng nhập)": "code",
-        "Mật khẩu": "password",
-        "Vai trò": "role",
-        "Quyền hạn": "permissions",
-        "Mã Kho": "warehouseId",
-        "Mã Hãng SX": "manufacturerId",
-        "Mã ĐVT chính": "unitId",
-        "Quy cách đóng gói": "itemsPerUnit",
-        "Tên ĐVT con": "subItemName",
-        "Thể tích/ĐVT con": "volumePerSubItem",
-        "ĐV Thể tích": "volumeUnit",
-        "Tồn đầu kỳ": "openingStock",
-        "Tồn kho hiện tại": "currentStock",
-        "Bắt buộc Lot/HSD": "requiresLotAndExpiry",
-        "Ngày nhập": "receiptDate",
-        "Ngày xuất": "issueDate",
-        "Mã Hóa Chất": "chemicalId",
-        "Kiểu nhập": "entryType",
-        "Mã QR": "qrCode",
-        "Số Lô (Lot)": "lotNumber",
-        "Số lượng": "quantity",
-        "Hạn sử dụng": "expiryDate",
-        "Xuất theo ĐVT con": "isSubUnit",
-        "Trạng thái QC": "qcStatus",
-        "Ngày duyệt QC": "qcDate",
-        "Người duyệt QC": "qcBy",
-        "Lý do không đạt (nếu failed)": "lotRejectionReason",
-        "Tên ứng dụng": "appName",
-        "Cảnh báo HSD (Ngày)": "warningThresholdDays",
-        "Báo đỏ HSD (Ngày)": "criticalThresholdDays",
-        "Ngưỡng cảnh báo tồn kho": "lowStockThreshold",
-        "DS Kho Kiểm soát QC": "qcControlledWarehouseIds",
-        "Bật bảng chi tiết BN": "enableUsageDetails",
-        "Cấu hình cột BN": "usageColumns",
-        "Chi tiết sử dụng (BN)": "usageDetails"
-      };
+      return ExcelHelper.parseWorkbook(workbook);
 
-      for (const sheetName of workbook.SheetNames) {
-        const enSheetKey = sheetNameMap[sheetName] || sheetName;
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
-        
-        const mappedRows = jsonRows.map((row: any) => {
-          const mappedRow: any = {};
-          for (const colKey of Object.keys(row)) {
-            const enColKey = headerMap[colKey] || colKey;
-            let val = row[colKey];
-            
-            if (typeof val === 'string' && (val.startsWith('{') || val.startsWith('['))) {
-              try { val = JSON.parse(val); } catch(e) {}
-            }
-            
-            // Ép kiểu
-            if (['itemsPerUnit', 'volumePerSubItem', 'openingStock', 'currentStock', 'quantity', 'warningThresholdDays', 'criticalThresholdDays', 'lowStockThreshold'].includes(enColKey)) {
-              val = isNaN(Number(val)) ? val : Number(val);
-            }
-            if (['requiresLotAndExpiry', 'enableUsageDetails', 'isSubUnit'].includes(enColKey)) {
-              val = (val === true || String(val).toLowerCase() === 'true');
-            }
-            
-            mappedRow[enColKey] = val;
-          }
-          return mappedRow;
-        });
-        
-        parsedData[enSheetKey] = mappedRows;
-      }
-      return parsedData;
     } catch (error) {
-      console.warn('Không thể load file Excel database cục bộ:', error);
+      console.warn(error);
       return null;
     }
   }
@@ -498,9 +317,9 @@ export class DataService {
 
   // Master Data CRUD
   addWarehouse(name: string) {
-    const id = this.generateNextId('KHO', this.warehouses());
+    const id = IdHelper.generateNextId('KHO', this.warehouses());
     this.warehouses.update(v => this.sortAlphabetically([...v, { id, name, enableUsageDetails: false, usageColumns: [] }]));
-    this.syncData('Warehouses', this.warehouses());
+    StorageHelper.syncData('Warehouses', this.warehouses());
   }
   deleteWarehouse(id: string) {
     const isUsed = this.chemicals().some(c => c.warehouseId === id);
@@ -509,12 +328,12 @@ export class DataService {
     this.warehouses.update(v => v.filter(i => i.id !== id));
     this.qcControlledWarehouseIds.update(ids => ids.filter(qcId => qcId !== id));
     
-    this.syncData('Warehouses', this.warehouses());
+    StorageHelper.syncData('Warehouses', this.warehouses());
     this.syncConfig();
   }
   updateWarehouse(id: string, name: string) {
     this.warehouses.update(v => this.sortAlphabetically(v.map(i => i.id === id ? { ...i, name } : i)));
-    this.syncData('Warehouses', this.warehouses());
+    StorageHelper.syncData('Warehouses', this.warehouses());
   }
 
   // Cập nhật cấu hình bảng chi tiết BN cho kho
@@ -531,7 +350,7 @@ export class DataService {
       }
       return base;
     }));
-    this.syncData('Warehouses', this.warehouses());
+    StorageHelper.syncData('Warehouses', this.warehouses());
   }
 
   // Lấy cấu hình kho
@@ -540,63 +359,63 @@ export class DataService {
   }
 
   addUnit(name: string) {
-    const id = this.generateNextId('DVT', this.units());
+    const id = IdHelper.generateNextId('DVT', this.units());
     this.units.update(v => this.sortAlphabetically([...v, { id, name }]));
-    this.syncData('Units', this.units());
+    StorageHelper.syncData('Units', this.units());
   }
   deleteUnit(id: string) {
     const isUsed = this.chemicals().some(c => c.unitId === id);
     if (isUsed) throw new Error('Không thể xóa đơn vị tính đang được sử dụng. Vui lòng cập nhật các hóa chất liên quan trước.');
     this.units.update(v => v.filter(i => i.id !== id));
-    this.syncData('Units', this.units());
+    StorageHelper.syncData('Units', this.units());
   }
   updateUnit(id: string, name: string) {
     this.units.update(v => this.sortAlphabetically(v.map(i => i.id === id ? { ...i, name } : i)));
-    this.syncData('Units', this.units());
+    StorageHelper.syncData('Units', this.units());
   }
 
   addManufacturer(name: string) {
-    const id = this.generateNextId('NSX', this.manufacturers());
+    const id = IdHelper.generateNextId('NSX', this.manufacturers());
     this.manufacturers.update(v => this.sortAlphabetically([...v, { id, name }]));
-    this.syncData('Manufacturers', this.manufacturers());
+    StorageHelper.syncData('Manufacturers', this.manufacturers());
   }
   deleteManufacturer(id: string) {
     const isUsed = this.chemicals().some(c => c.manufacturerId === id);
     if (isUsed) throw new Error('Không thể xóa hãng sản xuất đang được sử dụng. Vui lòng cập nhật các hóa chất liên quan trước.');
     this.manufacturers.update(v => v.filter(i => i.id !== id));
-    this.syncData('Manufacturers', this.manufacturers());
+    StorageHelper.syncData('Manufacturers', this.manufacturers());
   }
   updateManufacturer(id: string, name: string) {
     this.manufacturers.update(v => this.sortAlphabetically(v.map(i => i.id === id ? { ...i, name } : i)));
-    this.syncData('Manufacturers', this.manufacturers());
+    StorageHelper.syncData('Manufacturers', this.manufacturers());
   }
 
   addSubUnit(name: string) {
-    const id = this.generateNextId('DVC', this.subUnits());
+    const id = IdHelper.generateNextId('DVC', this.subUnits());
     this.subUnits.update(v => this.sortAlphabetically([...v, { id, name }]));
-    this.syncData('SubUnits', this.subUnits());
+    StorageHelper.syncData('SubUnits', this.subUnits());
   }
   deleteSubUnit(id: string) {
     this.subUnits.update(v => v.filter(i => i.id !== id));
-    this.syncData('SubUnits', this.subUnits());
+    StorageHelper.syncData('SubUnits', this.subUnits());
   }
   updateSubUnit(id: string, name: string) {
     this.subUnits.update(v => this.sortAlphabetically(v.map(i => i.id === id ? { ...i, name } : i)));
-    this.syncData('SubUnits', this.subUnits());
+    StorageHelper.syncData('SubUnits', this.subUnits());
   }
 
   addVolumeUnit(name: string) {
-    const id = this.generateNextId('DTT', this.volumeUnits());
+    const id = IdHelper.generateNextId('DTT', this.volumeUnits());
     this.volumeUnits.update(v => this.sortAlphabetically([...v, { id, name }]));
-    this.syncData('VolumeUnits', this.volumeUnits());
+    StorageHelper.syncData('VolumeUnits', this.volumeUnits());
   }
   deleteVolumeUnit(id: string) {
     this.volumeUnits.update(v => v.filter(i => i.id !== id));
-    this.syncData('VolumeUnits', this.volumeUnits());
+    StorageHelper.syncData('VolumeUnits', this.volumeUnits());
   }
   updateVolumeUnit(id: string, name: string) {
     this.volumeUnits.update(v => this.sortAlphabetically(v.map(i => i.id === id ? { ...i, name } : i)));
-    this.syncData('VolumeUnits', this.volumeUnits());
+    StorageHelper.syncData('VolumeUnits', this.volumeUnits());
   }
 
   getUnitName(unitId: string | undefined) {
@@ -626,12 +445,12 @@ export class DataService {
 
   // Chemical CRUD
   addChemical(c: Omit<Chemical, 'id' | 'currentStock'>, initialLot?: { number: string, expiry: string }) {
-    const id = this.generateNextId('HC', this.chemicals());
+    const id = IdHelper.generateNextId('HC', this.chemicals());
     const startStock = (c.openingStock > 0 && initialLot?.number) ? 0 : c.openingStock;
 
     const newChem: Chemical = { ...c, id: id, currentStock: startStock };
     this.chemicals.update(v => this.sortAlphabetically([newChem, ...v]));
-    this.syncData('Chemicals', this.chemicals());
+    StorageHelper.syncData('Chemicals', this.chemicals());
 
     if (c.openingStock > 0 && initialLot?.number) {
         this.addGoodsReceipt({
@@ -651,7 +470,7 @@ export class DataService {
 
   updateChemical(id: string, data: Partial<Chemical>) {
     this.chemicals.update(list => this.sortAlphabetically(list.map(c => c.id === id ? { ...c, ...data } : c)));
-    this.syncData('Chemicals', this.chemicals());
+    StorageHelper.syncData('Chemicals', this.chemicals());
   }
 
   deleteChemical(id: string) {
@@ -661,7 +480,7 @@ export class DataService {
     if (hasIssues) throw new Error('Không thể xóa! Hóa chất này đã phát sinh giao dịch xuất kho.');
     
     this.chemicals.update(list => list.filter(c => c.id !== id));
-    this.syncData('Chemicals', this.chemicals());
+    StorageHelper.syncData('Chemicals', this.chemicals());
   }
 
   // Goods Receipt CRUD
@@ -671,7 +490,7 @@ export class DataService {
     
     const newReceipt: GoodsReceipt = { 
         ...receipt, 
-        id: this.generateNextId('PN', this.goodsReceipts()),
+        id: IdHelper.generateNextId('PN', this.goodsReceipts()),
         qrCode: receipt.qrCode || '',
         notes: receipt.notes || '',
         qcStatus: requiresQC ? 'pending' : 'passed',
@@ -680,13 +499,13 @@ export class DataService {
     };
     
     this.goodsReceipts.update(receipts => [newReceipt, ...receipts]);
-    this.syncData('GoodsReceipts', this.goodsReceipts());
+    StorageHelper.syncData('GoodsReceipts', this.goodsReceipts());
 
     this.chemicals.update(chems => chems.map(chem => {
       if (chem.id === receipt.chemicalId) return { ...chem, currentStock: chem.currentStock + receipt.quantity };
       return chem;
     }));
-    this.syncData('Chemicals', this.chemicals());
+    StorageHelper.syncData('Chemicals', this.chemicals());
   }
 
   updateGoodsReceipt(updatedReceipt: GoodsReceipt) {
@@ -701,10 +520,10 @@ export class DataService {
             return { ...chem, currentStock: newStock < 0 ? 0 : newStock };
         });
     });
-    this.syncData('Chemicals', this.chemicals());
+    StorageHelper.syncData('Chemicals', this.chemicals());
 
     this.goodsReceipts.update(receipts => receipts.map(r => (r.id === updatedReceipt.id ? updatedReceipt : r)));
-    this.syncData('GoodsReceipts', this.goodsReceipts());
+    StorageHelper.syncData('GoodsReceipts', this.goodsReceipts());
   }
 
   deleteGoodsReceipt(id: string) {
@@ -718,10 +537,10 @@ export class DataService {
       }
       return chem;
     }));
-    this.syncData('Chemicals', this.chemicals());
+    StorageHelper.syncData('Chemicals', this.chemicals());
 
     this.goodsReceipts.update(receipts => receipts.filter(r => r.id !== id));
-    this.syncData('GoodsReceipts', this.goodsReceipts());
+    StorageHelper.syncData('GoodsReceipts', this.goodsReceipts());
   }
 
   approveQC(lotNumber: string, chemicalId: string, user: string) {
@@ -741,18 +560,18 @@ export class DataService {
           }
           return r;
       }));
-      this.syncData('GoodsReceipts', this.goodsReceipts());
+      StorageHelper.syncData('GoodsReceipts', this.goodsReceipts());
   }
 
   // Goods Issue CRUD
   addGoodsIssue(issue: Omit<GoodsIssue, 'id'>) {
     const newIssue: GoodsIssue = { 
         ...issue, 
-        id: this.generateNextId('PX', this.goodsIssues()),
+        id: IdHelper.generateNextId('PX', this.goodsIssues()),
         notes: issue.notes || ''
     };
     this.goodsIssues.update(issues => [newIssue, ...issues]);
-    this.syncData('GoodsIssues', this.goodsIssues());
+    StorageHelper.syncData('GoodsIssues', this.goodsIssues());
 
     this.chemicals.update(chems => chems.map(chem => {
       if (chem.id === issue.chemicalId) {
@@ -765,7 +584,7 @@ export class DataService {
       }
       return chem;
     }));
-    this.syncData('Chemicals', this.chemicals());
+    StorageHelper.syncData('Chemicals', this.chemicals());
 
     // Sync bảng BN lên Sheet riêng nếu kho có cấu hình
     if (issue.usageDetails && issue.usageDetails.length > 0) {
@@ -825,10 +644,10 @@ export class DataService {
         return { ...chem, currentStock: newStock < 0 ? 0 : newStock };
       });
     });
-    this.syncData('Chemicals', this.chemicals());
+    StorageHelper.syncData('Chemicals', this.chemicals());
 
     this.goodsIssues.update(issues => issues.map(i => (i.id === updatedIssue.id ? updatedIssue : i)));
-    this.syncData('GoodsIssues', this.goodsIssues());
+    StorageHelper.syncData('GoodsIssues', this.goodsIssues());
   }
 
   deleteGoodsIssue(id: string) {
@@ -843,9 +662,9 @@ export class DataService {
       }
       return chem;
     }));
-    this.syncData('Chemicals', this.chemicals());
+    StorageHelper.syncData('Chemicals', this.chemicals());
 
     this.goodsIssues.update(issues => issues.filter(i => i.id !== id));
-    this.syncData('GoodsIssues', this.goodsIssues());
+    StorageHelper.syncData('GoodsIssues', this.goodsIssues());
   }
 }
