@@ -1,5 +1,5 @@
 import { Injectable, signal, computed } from '@angular/core';
-import { Chemical } from '../models/chemical.model';
+import { Chemical } from '../../core/models/chemical.model';
 import { GoodsReceipt } from '../models/goods-receipt.model';
 import { GoodsIssue } from '../models/goods-issue.model';
 import { MasterData } from '../models/master-data.model';

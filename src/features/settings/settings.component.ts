@@ -2,8 +2,13 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DataService, MasterData, WarehouseData, UsageColumnDef } from '../../core/services/data.service';
+import { DataService } from '../../core/services/data.service';
 import { AuthService, User, UserPermissions } from '../../core/services/auth.service';
+import { MasterData } from '../../core/models/master-data.model';
+import {
+    WarehouseData,
+    UsageColumnDef
+} from '../../core/models/warehouse.model';
 
 type SettingTab = 'general' | 'personnel' | 'warehouse' | 'unit' | 'subUnit' | 'volumeUnit' | 'manufacturer';
 

@@ -38,6 +38,7 @@ const routes: Routes = [
       { path: 'inventory', component: InventoryComponent },
       { path: 'goods-receipt', component: GoodsReceiptComponent },
       { path: 'goods-issue', component: GoodsIssueComponent },
+      { path: 'test-results', component: ReportComponent },
       { path: 'reports', component: ReportComponent },
       { path: 'settings', component: SettingsComponent, canActivate: [adminGuard] },
     ]

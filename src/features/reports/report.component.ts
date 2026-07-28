@@ -2,7 +2,10 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DataService, GoodsReceipt, GoodsIssue, Chemical } from '../../core/services/data.service';
+import { DataService} from '../../core/services/data.service';
+import { Chemical } from '../../core/models/chemical.model';
+import { GoodsReceipt } from '../../core/models/goods-receipt.model';
+import { GoodsIssue } from '../../core/models/goods-issue.model';
 
 declare var XLSX: any;
 
@@ -171,7 +174,7 @@ declare var XLSX: any;
                                     <td class="px-6 py-4 font-mono text-sm">{{ item.lotNumber }}</td>
                                     <td class="px-6 py-4">
                                         <div class="font-bold text-gray-800">{{ getChemical(item.chemicalId)?.name }}</div>
-                                        <div class="text-[10px] text-gray-400 mt-1">Tạo bởi {{ item.createdBy || 'Quản trị viên' }} • {{ item.createdDate ? formatDateTime(item.createdDate) : formatDate(item.receiptDate) }}</div>
+                                        <div class="text-[10px] text-gray-400 mt-1">Tạo bởi {{ item.createdBy || 'Quản trị viên' }} • {{ item.createdDate ? formatDateTime(item.createdDate) : formatDate(item.issueDate) }}</div>
                                     </td>
                                     <td class="px-6 py-4 text-right">
                                         <div class="font-bold text-red-500 text-lg">

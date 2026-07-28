@@ -106,19 +106,20 @@ import { FormsModule } from '@angular/forms';
         </div>
         
         <ng-container *ngTemplateOutlet="navItem; context: { link: '/dashboard', icon: 'dashboard', label: 'Tổng quan' }"></ng-container>
-        <ng-container *ngTemplateOutlet="navItem; context: { link: '/chemicals', icon: 'cube', label: 'DS Hóa chất' }"></ng-container>
-        <ng-container *ngTemplateOutlet="navItem; context: { link: '/inventory', icon: 'clipboard', label: 'Tồn kho' }"></ng-container>
+        
 
         <!-- Kho vận Section -->
         <div class="mt-6 mb-2 text-xs font-bold text-gray-400 uppercase tracking-wider transition-all duration-300"
              [class.px-4]="!isSidebarCollapsed()"
              [class.text-center]="isSidebarCollapsed()"
              [class.text-[10px]]="isSidebarCollapsed()">
-             {{ isSidebarCollapsed() ? '---' : 'Kho vận' }}
+             {{ isSidebarCollapsed() ? '---' : 'Chức năng' }}
         </div>
         
         <ng-container *ngTemplateOutlet="navItem; context: { link: '/goods-receipt', icon: 'download', label: 'Nhập kho' }"></ng-container>
         <ng-container *ngTemplateOutlet="navItem; context: { link: '/goods-issue', icon: 'upload', label: 'Xuất kho' }"></ng-container>
+        <ng-container *ngTemplateOutlet="navItem; context: { link: '/inventory', icon: 'clipboard', label: 'Tồn kho' }"></ng-container>
+        <ng-container *ngTemplateOutlet="navItem; context: { link: '/test-results', icon: 'chart', label: 'Kết quả Test' }"></ng-container>
         <ng-container *ngTemplateOutlet="navItem; context: { link: '/reports', icon: 'chart', label: 'Báo cáo' }"></ng-container>
 
         <!-- Admin Section -->
@@ -129,6 +130,7 @@ import { FormsModule } from '@angular/forms';
                [class.text-[10px]]="isSidebarCollapsed()">
                {{ isSidebarCollapsed() ? '---' : 'Hệ thống' }}
           </div>
+          <ng-container *ngTemplateOutlet="navItem; context: { link: '/chemicals', icon: 'cube', label: 'DS Hóa chất' }"></ng-container>
           <ng-container *ngTemplateOutlet="navItem; context: { link: '/settings', icon: 'cog', label: 'Cài đặt' }"></ng-container>
         }
       </nav>

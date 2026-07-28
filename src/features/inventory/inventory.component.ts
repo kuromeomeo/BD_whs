@@ -1,9 +1,11 @@
 
 import { Component, inject, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DataService, Chemical, GoodsReceipt } from '../../core/services/data.service';
+import { DataService} from '../../core/services/data.service';
 import { AuthService } from '../../core/services/auth.service';
 import { FormsModule } from '@angular/forms';
+import { Chemical } from '../../core/models/chemical.model';
+import { GoodsReceipt } from '../../core/models/goods-receipt.model';
 
 @Component({
   selector: 'app-inventory',
