@@ -13,6 +13,8 @@ import { AuthService } from './src/core/services/auth.service';
 import { GoodsReceiptComponent } from './src/features/goods-receipt/goods-receipt.component';
 import { GoodsIssueComponent } from './src/features/goods-issue/goods-issue.component';
 import { ReportComponent } from './src/features/reports/report.component';
+import { TestResultComponent } from './src/features/test-result/test-result.component';
+
 
 const authGuard = () => {
   const auth = inject(AuthService);
@@ -38,7 +40,7 @@ const routes: Routes = [
       { path: 'inventory', component: InventoryComponent },
       { path: 'goods-receipt', component: GoodsReceiptComponent },
       { path: 'goods-issue', component: GoodsIssueComponent },
-      { path: 'test-results', component: ReportComponent },
+      { path: 'test-results', component: TestResultComponent },
       { path: 'reports', component: ReportComponent },
       { path: 'settings', component: SettingsComponent, canActivate: [adminGuard] },
     ]

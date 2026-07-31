@@ -31,13 +31,13 @@ declare var XLSX: any;
     <div class="space-y-6">
       <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-           <h2 class="text-3xl font-bold text-gray-800 tracking-tight">Quản lý Xuất kho</h2>
+           <h2 class="text-3xl font-bold text-gray-800 tracking-tight">Quản lý sổ khám bệnh</h2>
            <p class="text-gray-500 mt-1">Ghi nhận xuất kho hóa chất, vật tư cho các bộ phận.</p>
         </div>
         
         <button (click)="openAddModal()" class="inline-flex items-center px-6 py-3 bg-[#63C3C7] hover:bg-[#55a8ac] text-white rounded-xl font-bold transition-all shadow-lg shadow-[#63C3C7]/30 hover:shadow-[#63C3C7]/50 hover:-translate-y-0.5 active:translate-y-0">
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4m16 0l-4-4m4 4l-4 4"></path></svg>
-          Tạo Phiếu xuất
+          Tạo Sổ Khám Bệnh
         </button>
       </div>
 
@@ -48,16 +48,27 @@ declare var XLSX: any;
           <input type="date" [ngModel]="filterDate()" (ngModelChange)="filterDate.set($event); currentPage.set(1)" 
                  class="w-full mt-1 px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#63C3C7]/30 focus:border-[#63C3C7] outline-none transition-all bg-gray-50 focus:bg-white">
         </div>
-        <div class="flex-1 min-w-[250px]">
-          <label class="text-xs font-bold text-gray-500">Kho lưu trữ</label>
-          <select [ngModel]="filterWarehouseId()" (ngModelChange)="filterWarehouseId.set($event); currentPage.set(1)" 
-                  class="w-full mt-1 px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#63C3C7]/30 focus:border-[#63C3C7] outline-none appearance-none bg-gray-50 focus:bg-white cursor-pointer">
-            <option value="">Tất cả kho</option>
-            @for (w of warehouses(); track w.id) {
-              <option [value]="w.id">{{ w.name }}</option>
-            }
-          </select>
+
+        <!-- Từ ngày -->
+        <div class="flex-1 min-w-[200px]">
+          <label class="text-xs font-bold text-gray-500">Từ ngày</label>
+          <input
+            type="date"
+            [ngModel]="filterFromDate()"
+            (ngModelChange)="filterFromDate.set($event); currentPage.set(1)"
+            class="w-full mt-1 px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#63C3C7]/30 focus:border-[#63C3C7] outline-none transition-all bg-gray-50 focus:bg-white">
         </div>
+
+        <!-- Đến ngày -->
+        <div class="flex-1 min-w-[200px]">
+          <label class="text-xs font-bold text-gray-500">Đến ngày</label>
+          <input
+            type="date"
+            [ngModel]="filterToDate()"
+            (ngModelChange)="filterToDate.set($event); currentPage.set(1)"
+            class="w-full mt-1 px-3 py-2 text-sm rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#63C3C7]/30 focus:border-[#63C3C7] outline-none transition-all bg-gray-50 focus:bg-white">
+        </div>
+        
         <div class="w-full md:w-auto">
            <button (click)="resetFilters()" 
                    class="px-6 py-2 mt-1 w-full text-sm rounded-lg border border-gray-300 text-gray-700 font-bold hover:bg-gray-100 transition-colors">
@@ -148,7 +159,7 @@ declare var XLSX: any;
           <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gradient-to-r from-[#63C3C7] to-[#4FA8AC] text-white">
             <div class="flex items-center gap-3">
                <div class="bg-white/20 p-2 rounded-lg"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4m16 0l-4-4m4 4l-4 4"></path></svg></div>
-               <h3 class="text-xl font-bold">{{ isEditing() ? 'Cập nhật Phiếu Xuất' : 'Tạo Phiếu Xuất Kho' }}</h3>
+               <h3 class="text-xl font-bold">{{ isEditing() ? 'Cập nhật Sổ Khám Bệnh' : 'Tạo Phiếu Khám Bệnh' }}</h3>
             </div>
             <button (click)="closeModal()" class="text-white/70 hover:text-white transition-colors bg-white/10 hover:bg-white/20 rounded-full p-1">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -160,13 +171,13 @@ declare var XLSX: any;
                
                <!-- Issue Date -->
                <div>
-                 <label class="block text-sm font-bold text-gray-700 mb-2">Ngày xuất <span class="text-red-500">*</span></label>
+                 <label class="block text-sm font-bold text-gray-700 mb-2">Ngày test<span class="text-red-500">*</span></label>
                  <input type="date" [ngModel]="formData().issueDate" (ngModelChange)="updateFormData('issueDate', $event)" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-4 focus:ring-[#63C3C7]/10 focus:border-[#63C3C7] outline-none bg-gray-50 focus:bg-white transition-all">
                </div>
 
                <!-- Warehouse -->
                <div>
-                 <label class="block text-sm font-bold text-gray-700 mb-2">Từ kho <span class="text-red-500">*</span></label>
+                 <label class="block text-sm font-bold text-gray-700 mb-2">Tên xét nghiệm (hóa chất)<span class="text-red-500">*</span></label>
                  <select [ngModel]="formData().warehouseId" (ngModelChange)="onWarehouseChange($event)" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-4 focus:ring-[#63C3C7]/10 focus:border-[#63C3C7] outline-none appearance-none bg-gray-50 focus:bg-white transition-all">
                    <option value="" disabled>Chọn kho xuất</option>
                    @for (w of warehouses(); track w.id) {
@@ -461,7 +472,7 @@ declare var XLSX: any;
     @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
   `]
 })
-export class GoodsIssueComponent {
+export class TestResultComponent {
   dataService = inject(DataService);
   authService = inject(AuthService);
 
@@ -474,7 +485,10 @@ export class GoodsIssueComponent {
   itemsPerPage = 10;
   isModalOpen = false;
   isEditing = signal(false);
-  
+  filterFromDate = signal('');
+  filterToDate = signal('');
+
+
   // Details Modal
   isDetailsModalOpen = signal(false);
   selectedIssue = signal<GoodsIssue | null>(null);
@@ -537,8 +551,9 @@ export class GoodsIssueComponent {
   });
 
   resetFilters() {
-    this.filterWarehouseId.set('');
-    this.filterDate.set(getLocalToday());
+    this.filterDate.set('');
+    this.filterFromDate.set('');
+    this.filterToDate.set('');
     this.currentPage.set(1);
   }
 
