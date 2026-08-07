@@ -89,6 +89,29 @@ function doGet(e) {
 }
 
 /**
+ * Endpoint for post requests
+ */
+function doPost(e) {
+  try {
+    const req = JSON.parse(e.postData.contents);
+    const method = req.method;
+    const args = req.args; // could be array OR object depending on your methods
+    if (typeof this[method] !== "function") {
+      throw new Error("Method not found: " + method);
+    }
+    // Pass args as a single object, not spread via apply
+    const result = this[method](args);
+    return ContentService
+      .createTextOutput(JSON.stringify({ success: true, data: result }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ success: false, error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/**
  * Lấy toàn bộ dữ liệu từ một Sheet cụ thể
  * @param {string} sheetKey - Tên key của Sheet bằng tiếng Anh (VD: Users, Chemicals)
  * @returns {string} - Chuỗi JSON chứa mảng các object

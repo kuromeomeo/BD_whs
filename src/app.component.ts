@@ -6,6 +6,7 @@ import { AuthService } from './core/services/auth.service';
 import { DataService } from './core/services/data.service';
 import { filter } from 'rxjs/operators';
 import { FormsModule } from '@angular/forms';
+import { initLocalDevGoogleScriptRun } from './dev-environment/google-script.run';
 
 @Component({
   selector: 'app-root',
@@ -344,6 +345,7 @@ export class AppComponent {
   declare window: any;
 
   constructor() {
+    initLocalDevGoogleScriptRun(window);
     this.initGas();
 
     // Tự động đóng menu mobile khi chuyển trang

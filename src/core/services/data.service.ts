@@ -130,7 +130,7 @@ export class DataService {
 
   // ===================== HELPER =====================
   private sortAlphabetically<T extends { name: string }>(arr: T[]): T[] {
-    return arr.sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+    return arr.sort((a, b) => a.name?.localeCompare(b.name, 'vi'));
   }
 
   private generateNextId(prefix: string, list: any[]): string {

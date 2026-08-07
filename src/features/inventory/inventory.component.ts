@@ -523,7 +523,7 @@ export class InventoryComponent {
         
         if (warnA !== warnB) return warnB - warnA; // 1 (cảnh báo) đứng trước 0
         
-        return a.name.localeCompare(b.name);
+        return a.name?.localeCompare(b.name);
     });
   });
 
@@ -618,7 +618,7 @@ export class InventoryComponent {
             if (daysA !== daysB) return daysA - daysB;
             
             // 3. Tên A-Z
-            return a.chemicalName.localeCompare(b.chemicalName);
+            return a.chemicalName?.localeCompare(b.chemicalName);
         });
   });
 
