@@ -25,7 +25,7 @@ class GoogleScriptRun {
     return this.proxy || this;
   }
 
-  invoke(method: string, args: Record<string, any> = {}) {
+  invoke(method: string, args: any[]) {
     // Lưu lại handler của request hiện tại để tránh race-condition khi gọi nối tiếp
     const onSuccess = this.successCallback;
     const onFailure = this.failureCallback;
@@ -33,7 +33,7 @@ class GoogleScriptRun {
     // Reset handler về mặc định cho lần gọi tiếp theo
     this.successCallback = () => {};
     this.failureCallback = (err) => console.error(err);
-
+    console.log(args);
     fetch(this.url, {
       method: 'POST',
       headers: {
@@ -41,8 +41,8 @@ class GoogleScriptRun {
       },
       redirect: 'follow',
       body: JSON.stringify({
-        method,
-        args
+        method: method,
+        args : args
       })
     })
       .then(async (res) => {
@@ -98,7 +98,7 @@ export function initLocalDevGoogleScriptRun(window: any): void {
         if (prop === 'withFailureHandler')
           return target.withFailureHandler.bind(target);
 
-        return (args: Record<string, any> = {}) => target.invoke(prop, args);
+        return (...args: any[]) => target.invoke(prop, args);
       }
     });
 

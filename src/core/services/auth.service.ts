@@ -127,16 +127,34 @@ export class AuthService {
     this.syncUsersToGas();
   }
 
-  login(code: string, pass: string): boolean {
-    const user = this._users().find(u => u.code.toUpperCase() === code.toUpperCase() && u.password === pass);
-    if (user) {
-      const safeUser = { ...user };
-      this.currentUser.set(safeUser);
-      localStorage.setItem('chem_user', JSON.stringify(safeUser));
-      this.router.navigate(['/dashboard']);
-      return true;
+  login(username: string, password: string): Promise<User | null> {
+    if (typeof google === 'undefined' || !google.script?.run) {
+      return Promise.reject(new Error('Google Apps Script is not available.'));
     }
-    return false;
+
+    return new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler((user: User | null) => {
+          resolve(user);
+        })
+        .withFailureHandler((err: any) => {
+          reject(err);
+        })
+        .login(username, password);
+    });
+  }
+
+  async onLogin(username: string, password: string): Promise<boolean> {
+    const user = await this.login(username, password);
+
+    if (!user) {
+      return false;
+    }
+
+    this.currentUser.set(user);
+    localStorage.setItem('chem_user', JSON.stringify(user));
+    this.router.navigate(['/dashboard']);
+    return true;
   }
 
   logout(autoOut = false) {

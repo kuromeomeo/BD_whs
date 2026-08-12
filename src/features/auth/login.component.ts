@@ -1,5 +1,5 @@
 
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/services/auth.service';
 
@@ -27,7 +27,7 @@ import { AuthService } from '../../core/services/auth.service';
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                 </div>
-                <input type="text" [ngModel]="code" (ngModelChange)="code = $event.toUpperCase()" name="code" 
+                <input type="text" [ngModel]="code" (ngModelChange)="code = $event.toUpperCase()" name="code" [disabled]="isLoggingIn()"
                        class="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-[#63C3C7] focus:ring-2 focus:ring-[#63C3C7]/20 outline-none transition-all bg-gray-50 focus:bg-white uppercase"
                        placeholder="VD: ADMIN" required>
               </div>
@@ -39,22 +39,32 @@ import { AuthService } from '../../core/services/auth.service';
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
                 </div>
-                <input type="password" [(ngModel)]="password" name="password"
+                <input type="password" [(ngModel)]="password" name="password" [disabled]="isLoggingIn()"
                        class="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:border-[#63C3C7] focus:ring-2 focus:ring-[#63C3C7]/20 outline-none transition-all bg-gray-50 focus:bg-white"
                        placeholder="••••••" required>
               </div>
             </div>
 
-            @if (errorMsg) {
+            @if (errorMsg()) {
               <div class="p-3 bg-red-50 text-red-600 text-sm rounded-lg flex items-center">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                {{ errorMsg }}
+                {{ errorMsg() }}
               </div>
             }
 
-            <button type="submit" 
-                    class="w-full bg-[#63C3C7] text-white font-bold py-3.5 rounded-xl shadow-lg shadow-[#63C3C7]/30 hover:bg-[#55a8ac] hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200">
-              Đăng nhập hệ thống
+            <button type="submit" [disabled]="isLoggingIn()" [attr.aria-busy]="isLoggingIn()"
+                    class="w-full bg-[#63C3C7] text-white font-bold py-3.5 rounded-xl shadow-lg shadow-[#63C3C7]/30 hover:bg-[#55a8ac] hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-[#63C3C7] disabled:hover:shadow-lg disabled:hover:translate-y-0">
+              @if (isLoggingIn()) {
+                <span class="inline-flex items-center justify-center">
+                  <svg class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                  </svg>
+                  Đang đăng nhập...
+                </span>
+              } @else {
+                Đăng nhập hệ thống
+              }
             </button>
           </form>
 
@@ -70,14 +80,29 @@ export class LoginComponent {
   auth = inject(AuthService);
   code = '';
   password = '';
-  errorMsg = '';
+  errorMsg = signal('');
+  isLoggingIn = signal(false);
 
-  onLogin(e: Event) {
+  async onLogin(e: Event) {
     e.preventDefault();
-    if (!this.auth.login(this.code, this.password)) {
-      this.errorMsg = 'Mã nhân viên hoặc mật khẩu không đúng!';
-    } else {
-      this.errorMsg = '';
+
+    if (this.isLoggingIn()) {
+      return;
+    }
+
+    this.errorMsg.set('');
+    this.isLoggingIn.set(true);
+
+    try {
+      const isAuthenticated = await this.auth.onLogin(this.code, this.password);
+      if (!isAuthenticated) {
+        this.errorMsg.set('Mã nhân viên hoặc mật khẩu không đúng!');
+      }
+    } catch (error) {
+      console.error('Login request failed:', error);
+      this.errorMsg.set('Không thể kết nối đến hệ thống. Vui lòng thử lại.');
+    } finally {
+      this.isLoggingIn.set(false);
     }
   }
 }
