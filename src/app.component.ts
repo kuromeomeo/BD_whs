@@ -362,7 +362,6 @@ export class AppComponent {
         googleObj.script.run.withSuccessHandler((dataStr: string) => {
             const data = (typeof dataStr === 'string') ? JSON.parse(dataStr) : dataStr;
             this.dataService.initAppData(data);
-            this.auth.initUsers(data.users || []);
             this.lastSyncTime.set(new Date());
             this.isLoadingData.set(false);
         }).getInitialAppData();
@@ -388,7 +387,6 @@ export class AppComponent {
         googleObj.script.run.withSuccessHandler((dataStr: string) => {
             const data = (typeof dataStr === 'string') ? JSON.parse(dataStr) : dataStr;
             this.dataService.initAppData(data);
-            this.auth.initUsers(data.users || []);
             this.lastSyncTime.set(new Date());
             this.isSyncing.set(false);
             this.modalState.set({ isOpen: true, type: 'success', title: 'Thành công', message: 'Dữ liệu đã được đồng bộ mới nhất từ hệ thống!' });

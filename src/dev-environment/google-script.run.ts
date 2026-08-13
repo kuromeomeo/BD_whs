@@ -33,7 +33,6 @@ class GoogleScriptRun {
     // Reset handler về mặc định cho lần gọi tiếp theo
     this.successCallback = () => {};
     this.failureCallback = (err) => console.error(err);
-    console.log(args);
     fetch(this.url, {
       method: 'POST',
       headers: {
@@ -51,7 +50,6 @@ class GoogleScriptRun {
         }
         
         const text = await res.text();
-        console.log('Response from Apps Script:', text);
         if (!text) {
           throw new Error('Empty response from Apps Script');
         }

@@ -65,6 +65,13 @@ const HEADER_MAP = {
   "usageDetails": "Chi tiết sử dụng (BN)"
 };
 
+const PUBLIC_METHODS = {
+  getInitialAppData: true,
+  login: true,
+  saveTable: true,
+  saveUsageDetailsSheet: true
+};
+
 function getVietnameseHeader(englishHeader) {
   return HEADER_MAP[englishHeader] || englishHeader;
 }
@@ -95,12 +102,12 @@ function doPost(e) {
   try {
     const req = JSON.parse(e.postData.contents);
     const method = req.method;
-    const args = req.args; // could be array OR object depending on your methods
-    if (typeof this[method] !== "function") {
-      throw new Error("Method not found: " + method);
+    const args = Array.isArray(req.args) ? req.args : [req.args];
+    if (!Object.prototype.hasOwnProperty.call(PUBLIC_METHODS, method) ||
+        typeof this[method] !== "function") {
+      throw new Error("Method is not available: " + method);
     }
-    // Pass args as a single object, not spread via apply
-    const result = this[method](args);
+    const result = this[method].apply(null, args);
     return ContentService
       .createTextOutput(JSON.stringify({ success: true, data: result }))
       .setMimeType(ContentService.MimeType.JSON);
@@ -167,6 +174,10 @@ function loadTable(sheetKey) {
  * @param {string} dataString - Chuỗi JSON chứa mảng các object cần lưu
  */
 function saveTable(sheetKey, dataString) {
+  if (sheetKey === 'Users') {
+    throw new Error('Không thể cập nhật bảng Users bằng API đồng bộ chung.');
+  }
+
   var sheetName = SHEET_NAME_MAP[sheetKey] || sheetKey;
   var data = JSON.parse(dataString);
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -224,11 +235,11 @@ function saveTable(sheetKey, dataString) {
 }
 
 /**
- * (Tùy chọn) Hàm lấy toàn bộ bộ nhớ ứng dụng trong 1 lần gọi để load nhanh
+ * Lấy dữ liệu nghiệp vụ cần thiết khi khởi động ứng dụng.
+ * Dữ liệu tài khoản được tách riêng và không bao giờ trả về trong response này.
  */
 function getInitialAppData() {
   return {
-    users: JSON.parse(loadTable('Users')),
     warehouses: JSON.parse(loadTable('Warehouses')),
     units: JSON.parse(loadTable('Units')),
     subUnits: JSON.parse(loadTable('SubUnits')),
@@ -238,6 +249,31 @@ function getInitialAppData() {
     goodsReceipts: JSON.parse(loadTable('GoodsReceipts')),
     goodsIssues: JSON.parse(loadTable('GoodsIssues')),
     config: JSON.parse(loadTable('Config'))
+  };
+}
+
+/**
+ * Xác thực người dùng trên Apps Script và chỉ trả lại dữ liệu cần thiết cho
+ * phiên đăng nhập. Mật khẩu tuyệt đối không được trả về trình duyệt.
+ */
+function login(username, password) {
+  var normalizedUsername = String(username || '').trim().toUpperCase();
+  var suppliedPassword = String(password || '');
+  var users = JSON.parse(loadTable('Users'));
+
+  var matchedUser = users.find(function(user) {
+    return String(user.code || '').trim().toUpperCase() === normalizedUsername &&
+      String(user.password || '') === suppliedPassword;
+  });
+
+  if (!matchedUser) return null;
+
+  return {
+    id: matchedUser.id,
+    code: matchedUser.code,
+    name: matchedUser.name,
+    role: matchedUser.role,
+    permissions: matchedUser.permissions || undefined
   };
 }
 

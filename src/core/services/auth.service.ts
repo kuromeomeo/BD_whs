@@ -151,8 +151,11 @@ export class AuthService {
       return false;
     }
 
-    this.currentUser.set(user);
-    localStorage.setItem('chem_user', JSON.stringify(user));
+    // Bảo vệ thêm ở phía client: dù response backend có bị thay đổi sai,
+    // mật khẩu cũng không được giữ trong trạng thái hoặc LocalStorage.
+    const { password: _password, ...authenticatedUser } = user;
+    this.currentUser.set(authenticatedUser);
+    localStorage.setItem('chem_user', JSON.stringify(authenticatedUser));
     this.router.navigate(['/dashboard']);
     return true;
   }
